@@ -75,7 +75,7 @@ function dompdf(root, opts) {
 	var contents = []; //data
 	var offsets = []; //objects offsets
 	var pages = []; //page container
-	var stream = []; //page contents
+	var links = []; //links container
 	var images = []; //images id
 	var sources = []; //images src
 	var length = 0; //contents size
@@ -84,6 +84,13 @@ function dompdf(root, opts) {
 	//common image canvas container
 	var canvas = document.createElement("canvas");
 	var ctx = canvas.getContext("2d"); //always 2d
+
+	//array functions extensions
+	Array.prototype.put = function() { this.push.apply(this, arguments); return this; };
+	Array.prototype.merge = function(arr) { arr && this.push.apply(this, arr); return this; };
+	Array.prototype.unique = function() { return this.filter((e, i, a) => (a.indexOf(e) == i)); };
+	Array.prototype.intersect = function(arr) { return this.filter(e => (arr.indexOf(e) > -1)); };
+	Array.prototype.indexes = function(arr) { return arr.map(e => this.indexOf(e)).filter(i => (i > -1)); };
 
 	function _fd(n, d) { return Number(Math.round(n + "e" + d) + "e-" + d); };
 	function _f2(n) { return _fd(n, 2); };
@@ -101,15 +108,11 @@ function dompdf(root, opts) {
 	function _fStyle(elem, name) { return parseFloat($(elem).css(name)); };
 	function _f2Style(elem, name) { return _f2(_fStyle(elem, name)); };
 	function _nvl(val, def) { return _isset(val) ? val : def; };
-	function _index(i) { return (i > -1) ? i : 0; };
 
 	//id types for pdf reference format
 	function _ref(id) { return id + " 0 R"; };
-	//join "content" into the array container
-	function _put(str) { contents.push(str); };
-	function _putArray(data) { data.forEach(_put); };
 	//+1 for "\n" that will be used to join "content"
-	function _out(str) { length += str.length + 1; _put(str); };
+	function _out(str) { length += str.length + 1; contents.push(str); };
 	function _outArray(data) { data.forEach(_out); };
 
 	//parse and render functions helper
@@ -117,11 +120,12 @@ function dompdf(root, opts) {
 	function _close() { _out("endobj"); };
 	function _object(data) { _out(OPEN); _outArray(data); _out(CLOSE); };
 	function _named(name, data) { _out(name); _object(data); };
-	function _element(id) { offsets.push(length); _open(id); };
-	function _pdf(id, data) { _element(id); _object(data); _close(); return id; };
+	function _element(id) { offsets.push(length); _open(id); return id; };
 	function _stream(data) { _out("stream"); _outArray(data.filter(_isset)); _out("endstream"); };
-	function _streaming(id, data, out) { _element(id); _object(data); _stream(out || stream); _close(); return id; };
+	function _streaming(data, out) { _element(++objects); _object(data); _stream(out); _close(); return objects; };
 	function _size(arr) { return arr.reduce(function(c, e) { return c + e.length; }, 0); };
+	function _pdf(id, data) { _element(id); _object(data); _close(); return id; };
+	function _newpdf(data) { return _pdf(++objects, data); };
 	function _offset(page, elem, height) {
 		if (elem.nodeType == 3) return null; //#text node?
 		var offset = $(elem).offset(); //position relative to the document
@@ -138,14 +142,15 @@ function dompdf(root, opts) {
 	function _f2Coords(x, y) { return _f2(x) + " " + _f2(y); };
 	function _f2Elem(o) { return _f2Coords(o.left, o.bottom); };
 	function _f2Size(o) { return _f2Coords(o.width, o.height); };
-	function _f2Matrix(a, b, x, y) { return _f2Coords(a, b) + " " + _f2Coords(x, y); };
+	function _f2Rect(a, b, x, y) { return _f2Coords(a, b) + " " + _f2Coords(x, y); };
 	function _line(a, b, x, y) { return _f2Coords(a, b) + " m " + _f2Coords(x, y) + " l"; };
 	function _lineTop(e) { return _line(e.left, e.top - 2, e.right, e.top - 2); };
 	function _lineLeft(e) { return _line(e.left, e.top, e.left, e.bottom); };
 	function _lineBottom(e) { return _line(e.left, e.bottom, e.right, e.bottom); };
 	function _lineRight(e) { return _line(e.right, e.top, e.right, e.bottom); };
-	function _rect(x, y, w, h) { return _f2Coords(x, y) + " " + _f2Coords(w, h) + " re"; };
-	function _rectElem(e) { return _rect(e.left, e.bottom, e.width, e.height); };
+	function _boxElem(e) { return _f2Rect(e.left, e.bottom, e.width, e.height); };
+	function _xyElem(e) { return _f2Rect(e.left, e.bottom, e.right, e.top); };
+	function _rectElem(e) { return _boxElem(e) + " re"; };
 	function _hasColor(c) { return (c != "transparent") && (c != "rgba(0, 0, 0, 0)") && (c != "rgb(0, 0, 0)"); };
 	function _color(r, g, b) { return _f2(r / 255) + " " + _f2(g / 255) + " " + _f2(b / 255) + " rg"; };
 	function _arrColor(rgb) { return rgb && _color(+rgb[0], +rgb[1], +rgb[2]); };
@@ -154,14 +159,15 @@ function dompdf(root, opts) {
 	function _cssColor(elem, css) { return _pdfColor($(elem).css(css)); };
 	function _gray(g) { return _f2(g / 255) + " g"; };
 
-	function _style(elem, offset) {
+	function _style(page, elem, offset) {
+		var stream = []; //page contents
 		var color = $(elem).css("background-color"); //1.- bg color
 		_hasColor(color) && stream.push(_rgbColor(color), _rectElem(offset), "f");
 		var bg = $(elem).css("background-image");
 		if (bg && (bg != "none")) {
 			var img = new Image();
 			img.src = bg.match(/url\(["|']?([^"']*)["|']?\)/)[1];
-			_img(null, img, offset);
+			stream.merge(_img(page, img, offset));
 		}
 		var border = _fStyle(elem, "border");
 		color = (_cssColor(elem, "border-color") || _gray(0)).toUpperCase();
@@ -177,10 +183,15 @@ function dompdf(root, opts) {
 		aux && stream.push(_f2(aux) + " w", color, _lineBottom(offset), "S");
 		aux = border ? 0 : _fStyle(elem, "border-right");
 		aux && stream.push(_f2(aux) + " w", color, _lineRight(offset), "S");
-		return elem;
+		return stream;
 	};
 
 	function _text(page, elem, text) {
+		text = text || elem.data;
+		if (!text || !text.trim())
+			return null; //empty text
+
+		var stream = []; //page contents
 		var owner = (elem.nodeType == 3) ? elem.parentNode : elem;
 		var size = _fStyle(owner, "font-size") || opts.fontSize;
 		var fonts = $(owner).css("font-family").split().map(function(font) {
@@ -188,14 +199,13 @@ function dompdf(root, opts) {
 			css += ($(owner).css("font-style") != "normal") ? _ucfirst($(owner).css("font-style")) : "";
 			return font.replace(/\W+/g, "") + css;
 		});
-		var fRef = _index(FONTS.findIndex(f => (fonts.indexOf(f) > -1)));
+		var fRef = FONTS.indexes(fonts)[0] || 0;
 		var pdfColor = _cssColor(owner, "color") || _gray(0);
 		var decoration = $(owner).css("text-decoration") + " ";
 		decoration += $(owner.parentNode).css("text-decoration");
 
-		text = (text || elem.data).trim() + " ";
 		text = text.replace(/:([\w\.]+);/g, (txt, key) => (page[key] || txt));
-		var child1 = $("<div><span>" + text.replace(/\s+/g, "</span> <span>") + "</span></div>");
+		var child1 = $("<span><span>" + text.replace(/\s+/g, "</span> <span>") + "</span></span>");
 		owner.replaceChild(child1[0], elem);
 		var lines = {}; //rows container by top position
 		$("span", child1).each(function() {
@@ -203,7 +213,7 @@ function dompdf(root, opts) {
 			lines[top] = (lines[top] ? lines[top] + " " : "") + this.innerText;
 		});
 		var rows = Object.keys(lines).map(k => lines[k].trim()).filter(r => r);
-		var child2 = $("<div>" + rows.map(row => "<span>" + row + "</span>").join(" ") + "</div>");
+		var child2 = $("<span>" + rows.map(row => "<span>" + row + "</span>").join(" ") + "</span>");
 		owner.replaceChild(child2[0], child1[0]);
 		$("span", child2).each(function(i, e) {
 			var offset = _offset(page, e, size);
@@ -213,14 +223,28 @@ function dompdf(root, opts) {
 			(decoration.indexOf("line-through") > -1) && (offset.bottom += 5) && stream.push("1 w", _lineBottom(offset), "S");
 		});
 		$(child2).replaceWith(text);
-		return text;
+		return stream;
+	};
+
+	function _a(page, elem, offset) {
+		var href = elem.getAttribute("href");
+		if (!href) return false; //anchor case
+		var target = $("a[name='" + href.substr(1) + "']", root); //destination element
+		var page = $(target).closest($(root).children())[0]; //find page destination
+		if (page) return true; //internal link
+		_newpdf([
+			"/Type /Annot", "/Subtype /Link",
+			"/Rect [" + _xyElem(offset) + "]",
+			"/Border [16 16 1]",
+			"/A", OPEN, "/Type /Action", "/S /URI " + href, CLOSE
+		]);
+		return false;
 	};
 
 	function _img(page, elem, offset) {
 		var i = sources.indexOf(elem.src);
 		if (i > -1) //img ya insertada en el fichero
-			return stream.push("q", _f2Matrix(elem.width, 0, 0, elem.height) + " " + _f2Elem(offset) + " cm",
-								"/i" + i + " Do", "Q");
+			return ["q", _f2Rect(elem.width, 0, 0, elem.height) + " " + _f2Elem(offset) + " cm", "/i" + i + " Do", "Q"];
 
 		canvas.width = elem.width; //set the image width to the canvas
 		canvas.height = elem.height; //set the image height to the canvas
@@ -247,18 +271,15 @@ function dompdf(root, opts) {
 
 		i = sources.length;
 		sources.push(elem.src);
-		images.push(++objects);
-		stream.push("q", _f2Matrix(elem.width, 0, 0, elem.height) + " " + _f2Elem(offset) + " cm",
-					"/i" + i + " Do", "Q");
-
-		return _streaming(objects, [
+		images.push(_streaming([
 			"/Type /XObject", "/Subtype /Image",
 			"/ColorSpace /DeviceRGB", //"/Colors 3",
 			"/BitsPerComponent 8", "/Filter /DCTDecode",
 			"/Width " + elem.width,
 			"/Height " + elem.height,
 			"/Length " + jpgBin.length
-		], [jpgBin]);
+		], [jpgBin]));
+		return ["q", _f2Rect(elem.width, 0, 0, elem.height) + " " + _f2Elem(offset) + " cm", "/i" + i + " Do", "Q"];
 	};
 
 	function _svg(page, elem, offset) {
@@ -313,8 +334,10 @@ function dompdf(root, opts) {
 				var elements = [];
 				w = _fStyle(page, "paddingBottom");
 				_each(page, function(e, i) {
+					if (e.nodeType == 3) //check if text object has parent element
+						return (e.parentNode == page) ? page.replaceChild($("<span>" + e.data + "</span>")[0], e) : e;
 					offset = _offset(page, e);
-					if ((e.nodeType == 3) || (offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
+					if ((offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
 						return e;
 					if (elements.length)
 						return $(e).remove();
@@ -329,45 +352,56 @@ function dompdf(root, opts) {
 
 		render: function() {
 			var date = new Date(); //timestamp
-			var idRoot = ++objects; //root id = 1
-			var idInfo = ++objects; //id for info element
 			var idPages = ++objects; //id for pages element
 			var idResource = ++objects; //id for resource element
 
 			//put PDF header, body and footer contents
 			_out("%PDF-" + (root.getAttribute("pdf") || "1.5"));
-			_out("%ÐÔÅØ" /*+ Math.random().toString(36).substr(2, 4)*/);
-			_pdf(idInfo, [
+			var idRoot = _newpdf(["/Type /Catalog", "/Pages " + _ref(idPages)]);
+			var idInfo = _newpdf([
 				"/Title (" + ($(root).attr("title") || "DOM-PDF") + ")",
 				"/Producer (" + ($(root).attr("producer") || "") + ")",
 				"/CreationDate (D:" + date.getFullYear() + date.getMonth() + date.getDate()
 									+ date.getHours() + date.getMinutes() + date.getSeconds() + ")"
 			]);
 
+			var annots = []; //document annotations
 			var _arrPagesIds = pages.map(function(page, i) {
+				var stream = []; //page contents
 				page.number = i + 1;
 				page.total = pages.length;
 				_each(page, function(e) {
+					if (e.nodeType == 3) //text object doesn't have offset
+						return stream.merge(_text(page, e));
 					var offset = _offset(page, e); //recalcule final offset
-					(e.nodeType == 3) ? _text(page, e) //text object doesn't have offset
-						: (e.nodeName == "IMG") ? _img(page, _style(e, offset), offset)
-						: (e.nodeName == "svg") ? _svg(page, _style(e, offset), offset)
-						: _style(e, offset); //DOM element style
+					stream.merge(_style(page, e, offset)); //push DOM element style
+					(e.nodeName == "IMG") && stream.merge(_img(page, e, offset));
+					(e.nodeName == "svg") && stream.merge(_svg(page, e, offset));
+					(e.nodeName == "A") && _a(page, e, offset);// && annots.push(++objects);
 					return true;
 				});
 
-				var aux = _size(stream) + stream.length - 1; //calc. stream length
-				var idContents = _streaming(++objects, ["/Length " + aux]); //put stream
-				stream.splice(0, stream.length - 1); //clear page stream and free memory
+				var aux = _size(stream) + stream.length - 1; //stream length
+				aux = _streaming(["/Length " + aux], stream); //put stream
 
-				return _pdf(++objects, [
+				return _newpdf([
 					"/Type /Page",
 					"/Parent " + _ref(idPages),
 					"/Resources " + _ref(idResource),
 					"/MediaBox [0 0 " + _f2Size(page) + "]",
-					"/Contents " + _ref(idContents)
+					"/Annots [" + annots.map(_ref).join(" ") + "]",
+					"/Contents " + _ref(aux)
 				]);
 			});
+
+			/*annots.forEach(function(ref, i) {
+				_pdf(ref, [
+					"/Type /Annot", "/Subtype /Link",
+					"/Rect [" + _boxElem(links[i].o) + "]",
+					"/Border [16 16 1]",
+					"/Dest [" + _ref(_arrPagesIds[i]) + " /XYZ 0 " + links[i].p + " null]"
+				]);
+			});*/
 
 			_pdf(idPages, [
 				"/Type /Pages",
@@ -377,7 +411,7 @@ function dompdf(root, opts) {
 			]);
 
 			var fonts = FONTS.map(function(family) {
-				return _pdf(++objects, [
+				return _newpdf([
 					"/Type /Font",
 					"/Subtype /Type1",
 					"/BaseFont /" + family,
@@ -385,7 +419,6 @@ function dompdf(root, opts) {
 				]);
 			});
 
-			_pdf(idRoot, ["/Type /Catalog", "/Pages " + _ref(idPages), "/PageLayout /OneColumn"]);
 			_element(idResource); _out(OPEN); //resource element
 			_out("/ProcSet [/PDF /Text /ImageB /ImageC /ImageI]");
 			_named("/Font", fonts.map((id, i) => ("/f" + i + " " + _ref(id))));
@@ -394,15 +427,10 @@ function dompdf(root, opts) {
 			_close();
 
 			//add the footer elements into pdf document structure
-			_put("xref"); _put("0 " + (++objects), "0000000000 65535 f");
-			offsets.forEach(i => _put(_lpad(i.toString(), 10) + " 00000 n"));
-			_putArray([
-				"trailer", OPEN,
-				"/Size " + objects,
-				"/Root " + _ref(idRoot),
-				"/Info " + _ref(idInfo),
-				CLOSE, "startxref", length, "%%EOF"
-			]);
+			contents.put("xref", "0 " + (++objects), "0000000000 65535 f")
+					.merge(offsets.map(i => (_lpad(i.toString(), 10) + " 00000 n")))
+					.put("trailer", OPEN, "/Size " + objects, "/Root " + _ref(idRoot),
+						"/Info " + _ref(idInfo), CLOSE, "startxref", length, "%%EOF");
 			return this;
 		},
 
