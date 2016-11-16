@@ -91,6 +91,7 @@ function dompdf(root, opts) {
 	Array.prototype.unique = function() { return this.filter((e, i, a) => (a.indexOf(e) == i)); };
 	Array.prototype.intersect = function(arr) { return this.filter(e => (arr.indexOf(e) > -1)); };
 	Array.prototype.indexes = function(arr) { return arr.map(e => this.indexOf(e)).filter(i => (i > -1)); };
+	Array.prototype.reset = function() { this.splice(0, this.length); return this; };
 
 	function _fd(n, d) { return Number(Math.round(n + "e" + d) + "e-" + d); };
 	function _f2(n) { return _fd(n, 2); };
@@ -127,7 +128,6 @@ function dompdf(root, opts) {
 	function _pdf(id, data) { _element(id); _object(data); _close(); return id; };
 	function _newpdf(data) { return _pdf(++objects, data); };
 	function _offset(page, elem, height) {
-		if (elem.nodeType == 3) return null; //#text node?
 		var offset = $(elem).offset(); //position relative to the document
 		var box = elem.getBoundingClientRect(); //position relative to the viewport
 		offset.width = elem.width || elem.clientWidth || box.width;
