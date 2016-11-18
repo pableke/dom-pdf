@@ -88,6 +88,8 @@ function dompdf(root, opts) {
 	//array functions extensions
 	Array.prototype.put = function() { this.push.apply(this, arguments); return this; };
 	Array.prototype.merge = function(arr) { arr && this.push.apply(this, arr); return this; };
+	Array.prototype.combine = function(arr) { return this.reduce(function(r, e, i) { r[e] = arr[i]; return r; }, {}); };
+	Array.prototype.toObject = function() { return this.reduce(function(r, e, i) { r[i] = e; return r; }, {}); };
 	Array.prototype.unique = function() { return this.filter((e, i, a) => (a.indexOf(e) == i)); };
 	Array.prototype.intersect = function(arr) { return this.filter(e => (arr.indexOf(e) > -1)); };
 	Array.prototype.indexes = function(arr) { return arr.map(e => this.indexOf(e)).filter(i => (i > -1)); };
