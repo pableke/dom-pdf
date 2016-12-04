@@ -75,7 +75,6 @@ function dompdf(root, opts) {
 	var contents = []; //data
 	var offsets = []; //objects offsets
 	var pages = []; //page container
-	var links = []; //links container
 	var images = []; //images id
 	var sources = []; //images src
 	var length = 0; //contents size
@@ -85,7 +84,8 @@ function dompdf(root, opts) {
 	var canvas = document.createElement("canvas");
 	var ctx = canvas.getContext("2d"); //always 2d
 
-	//array functions extensions
+	//array prototype functions extensions
+	Array.prototype.add = function(value) { value && this.push(value); return this; };
 	Array.prototype.put = function() { this.push.apply(this, arguments); return this; };
 	Array.prototype.merge = function(arr) { arr && this.push.apply(this, arr); return this; };
 	Array.prototype.combine = function(arr) { return this.reduce(function(r, e, i) { r[e] = arr[i]; return r; }, {}); };
@@ -173,17 +173,17 @@ function dompdf(root, opts) {
 		}
 		var border = _fStyle(elem, "border");
 		color = (_cssColor(elem, "border-color") || _gray(0)).toUpperCase();
-		if (elem.nodeName == "HR")
-			stream.push(_f2(border) + " w", color.toLowerCase(), _rectElem(offset), "f");
-		else
-			border && stream.push(_f2(border) + " w", color, _rectElem(offset), "S");
-		var aux = border ? 0 : _fStyle(elem, "border-top");
+		if (elem.nodeName == "HR") //styled element
+			return stream.put(_f2(border) + " w", color.toLowerCase(), _rectElem(offset), "f");
+		if (border)
+			return stream.put(_f2(border) + " w", color, _rectElem(offset), "S");
+		var aux = _fStyle(elem, "border-top");
 		aux && stream.push(_f2(aux) + " w", color, _lineTop(offset), "S");
-		aux = border ? 0 : _fStyle(elem, "border-left");
+		aux = _fStyle(elem, "border-left");
 		aux && stream.push(_f2(aux) + " w", color, _lineLeft(offset), "S");
-		aux = border ? 0 : _fStyle(elem, "border-bottom");
+		aux = _fStyle(elem, "border-bottom");
 		aux && stream.push(_f2(aux) + " w", color, _lineBottom(offset), "S");
-		aux = border ? 0 : _fStyle(elem, "border-right");
+		aux = _fStyle(elem, "border-right");
 		aux && stream.push(_f2(aux) + " w", color, _lineRight(offset), "S");
 		return stream;
 	};
@@ -232,15 +232,14 @@ function dompdf(root, opts) {
 		var href = elem.getAttribute("href");
 		if (!href) return false; //anchor case
 		var target = $("a[name='" + href.substr(1) + "']", root); //destination element
-		var page = $(target).closest($(root).children())[0]; //find page destination
-		if (page) return true; //internal link
-		_newpdf([
-			"/Type /Annot", "/Subtype /Link",
-			"/Rect [" + _xyElem(offset) + "]",
-			"/Border [16 16 1]",
-			"/A", OPEN, "/Type /Action", "/S /URI " + href, CLOSE
-		]);
-		return false;
+		var dest = $(target).closest($(root).children())[0]; //find page destination
+		if (dest)
+			return _newpdf(["/Type /Annot", "/Subtype /Link",
+					"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
+					"/Dest [" + _ref(dest.reference) + " /XYZ 0 0 null]"]);
+		return _newpdf(["/Type /Annot", "/Subtype /Link",
+			"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
+			"/A", OPEN, "/Type /Action", "/S /URI " + href, CLOSE]);
 	};
 
 	function _img(page, elem, offset) {
@@ -354,12 +353,12 @@ function dompdf(root, opts) {
 
 		render: function() {
 			var date = new Date(); //timestamp
-			var idPages = ++objects; //id for pages element
+			var idParent = ++objects; //id for parent element
 			var idResource = ++objects; //id for resource element
 
 			//put PDF header, body and footer contents
 			_out("%PDF-" + (root.getAttribute("pdf") || "1.5"));
-			var idRoot = _newpdf(["/Type /Catalog", "/Pages " + _ref(idPages)]);
+			var idRoot = _newpdf(["/Type /Catalog", "/Pages " + _ref(idParent)]);
 			var idInfo = _newpdf([
 				"/Title (" + ($(root).attr("title") || "DOM-PDF") + ")",
 				"/Producer (" + ($(root).attr("producer") || "") + ")",
@@ -367,50 +366,42 @@ function dompdf(root, opts) {
 									+ date.getHours() + date.getMinutes() + date.getSeconds() + ")"
 			]);
 
-			var annots = []; //document annotations
-			var _arrPagesIds = pages.map(function(page, i) {
+			var idPages = pages.map(p => (p.reference = ++objects));
+			_pdf(idParent, [
+				"/Type /Pages",
+				"/MediaBox [0 0 " + FORMATS[opts.pageFormat].join(" ") + "]",
+				"/Kids [" + idPages.map(_ref).join(" ")  + "]",
+				"/Count " + pages.length
+			]);
+
+			pages.forEach(function(page, i) {
+				var links = []; //links container
 				var stream = []; //page contents
-				page.number = i + 1;
+				page.number = i + 1; //page number
 				page.total = pages.length;
 				_each(page, function(e) {
 					if (e.nodeType == 3) //text object doesn't have offset
 						return stream.merge(_text(page, e));
 					var offset = _offset(page, e); //recalcule final offset
 					stream.merge(_style(page, e, offset)); //push DOM element style
-					(e.nodeName == "IMG") && stream.merge(_img(page, e, offset));
-					(e.nodeName == "svg") && stream.merge(_svg(page, e, offset));
-					(e.nodeName == "A") && _a(page, e, offset);// && annots.push(++objects);
+					if (e.nodeName == "IMG") return stream.merge(_img(page, e, offset));
+					if (e.nodeName == "svg") return stream.merge(_svg(page, e, offset));
+					if (e.nodeName == "A") return links.add(_a(page, e, offset));
 					return true;
 				});
 
 				var aux = _size(stream) + stream.length - 1; //stream length
 				aux = _streaming(["/Length " + aux], stream); //put stream
 
-				return _newpdf([
+				_pdf(page.reference, [
 					"/Type /Page",
-					"/Parent " + _ref(idPages),
+					"/Parent " + _ref(idParent),
 					"/Resources " + _ref(idResource),
 					"/MediaBox [0 0 " + _f2Size(page) + "]",
-					"/Annots [" + annots.map(_ref).join(" ") + "]",
+					"/Annots [" + links.map(_ref).join(" ") + "]",
 					"/Contents " + _ref(aux)
 				]);
 			});
-
-			/*annots.forEach(function(ref, i) {
-				_pdf(ref, [
-					"/Type /Annot", "/Subtype /Link",
-					"/Rect [" + _boxElem(links[i].o) + "]",
-					"/Border [16 16 1]",
-					"/Dest [" + _ref(_arrPagesIds[i]) + " /XYZ 0 " + links[i].p + " null]"
-				]);
-			});*/
-
-			_pdf(idPages, [
-				"/Type /Pages",
-				"/MediaBox [0 0 " + FORMATS[opts.pageFormat].join(" ") + "]",
-				"/Kids [" + _arrPagesIds.map(_ref).join(" ")  + "]",
-				"/Count " + pages.length
-			]);
 
 			var fonts = FONTS.map(function(family) {
 				return _newpdf([
