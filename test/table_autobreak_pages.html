@@ -33,12 +33,22 @@
 </head>
 <body>
 
+<h1>PDF View</h1><hr>
 <iframe type="application/pdf" title="jsPDF" height="380" width="500" style="margin: 5px;"></iframe>
 <textarea id="raw" rows="25" cols="80" style="margin: 5px;"></textarea>
-<br class="clear" /><br/>
 
+<h1>HTML View</h1><hr>
 <div pdf="1.5" producer="Pablo Rosique Vidal" title="PDF de prueba">
-	<div name="page" class="page a4"> <!-- page 1 with autobreak -->
+	<div class="page a4"> <!-- outlines page -->
+		<h1>Index</h1>
+		<a name="index" />
+		<ul id="outlines">
+			<li><a href="#page1">Page 1</a></li>
+			<li><a href="#last-page">Page 2</a></li>
+		</ul>
+	</div>
+	<div class="page a4"> <!-- page 1 with autobreak -->
+		<a name="page1" />
 		<p style="font-size:20px; text-decoration: line-through underline;">Hola Mundo!!</p>
 		<p style="text-decoration: line-through;">mas</p>
 		<p style="border-left:4px solid; color: red;">misma fila<p/>
@@ -48,6 +58,8 @@
 		</p>
 		<p>Fila inferior espero...</p>
 		<span>enlaces: </span>
+		<a href="#index">go index</a>
+		<span> / </span>
 		<a href="#last-page">ir a la última página</a>
 		<span> / </span>
 		<a href="http://www.google.es" target="_blank">external url</a>
@@ -143,7 +155,7 @@
 		<p class="page_number">:number; / :total;</p>
 	</div>
 
-	<div name="page" class="page a4 landscape">
+	<div class="page a4 landscape">
 		<a name="last-page"><p>Segundo Hola Mundo!!</p></a>
 		<table>
 			<tr><th>col img.</th><th>col1</th><th>col2</th><th>col3</th></tr>

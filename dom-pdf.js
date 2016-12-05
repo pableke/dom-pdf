@@ -239,7 +239,7 @@ function dompdf(root, opts) {
 					"/Dest [" + _ref(dest.reference) + " /XYZ 0 0 null]"]);
 		return _newpdf(["/Type /Annot", "/Subtype /Link",
 			"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
-			"/A", OPEN, "/Type /Action", "/S /URI " + href, CLOSE]);
+			"/A", OPEN, "/Type /Action", "/S /URI /URI(" + href + ")", CLOSE]);
 	};
 
 	function _img(page, elem, offset) {
@@ -334,18 +334,16 @@ function dompdf(root, opts) {
 
 				var elements = [];
 				w = _fStyle(page, "paddingBottom");
+				page.childNodes.forEach(e => ((e.nodeType == 3) && $(e).replaceWith("<span>" + e.data + "</span>")));
 				_each(page, function(e, i) {
-					if (e.nodeType == 3) //check if text object has parent element
-						return (e.parentNode == page) ? page.replaceChild($("<span>" + e.data + "</span>")[0], e) : e;
-					offset = _offset(page, e);
-					if ((offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
+					offset = (e.nodeType == 3) ? null : _offset(page, e);
+					if (!offset || (offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
 						return e;
-					if (elements.length)
-						return $(e).remove();
 					var newPage = root.insertBefore(page.cloneNode(true), page.nextSibling);
 					_each(newPage, (e, j) => ((j < i) && ((e.nodeType == 3) || (e.clientHeight > h) || elements.push(e))));
 					elements.forEach(e => (($(e).css("position") == "absolute") || $(e).closest("thead").length || $(e).remove()));
-					return $(e).remove();
+					_each(page, (e, j) => ((j < i) || (e.nodeType == 3) || ($(e).css("position") == "absolute") || $(e).remove()));
+					return false; //force go to next page
 				});
 			});
 			return this;
@@ -355,10 +353,15 @@ function dompdf(root, opts) {
 			var date = new Date(); //timestamp
 			var idParent = ++objects; //id for parent element
 			var idResource = ++objects; //id for resource element
+			var idOutlines = ++objects; //bootmarks id (outlines)
 
 			//put PDF header, body and footer contents
 			_out("%PDF-" + (root.getAttribute("pdf") || "1.5"));
-			var idRoot = _newpdf(["/Type /Catalog", "/Pages " + _ref(idParent)]);
+			var idRoot = _newpdf([
+				"/Type /Catalog",
+				"/Pages " + _ref(idParent),
+				"/Outlines " + _ref(idOutlines)
+			]);
 			var idInfo = _newpdf([
 				"/Title (" + ($(root).attr("title") || "DOM-PDF") + ")",
 				"/Producer (" + ($(root).attr("producer") || "") + ")",
@@ -372,6 +375,15 @@ function dompdf(root, opts) {
 				"/MediaBox [0 0 " + FORMATS[opts.pageFormat].join(" ") + "]",
 				"/Kids [" + idPages.map(_ref).join(" ")  + "]",
 				"/Count " + pages.length
+			]);
+
+			$("#outlines", root).find("a[href]").each(e => (e.reference = ++objects));
+			$("#outlines", root).find("li").each(function() {
+
+			});
+			_pdf(idOutlines, [
+				"/Type /Outlines", 
+				"/Count 0"
 			]);
 
 			pages.forEach(function(page, i) {
