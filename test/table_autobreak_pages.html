@@ -4,30 +4,7 @@
 	<meta charset="utf-8" />
 	<title>JS DOM-PDF Test</title>
 
-	<style type="text/css">
-		* {
-			margin: 0px auto;
-			padding: 0px;
-		}
-		.page {
-			position: relative;
-			margin: 3px;
-			padding: 24px;
-			border: 1px solid;
-			float: left;
-		}
-		.page_number {
-			position: absolute;
-			right: 5px;
-			bottom: 5px;
-		}
-		.bgtd {
-			background-repeat: no-repeat;
-			background-position: center;
-			background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAp1JREFUeNqEU21IU1EYfu7unW5Ty6aBszYs6MeUjGVYokHYyH5E1B9rZWFEFPQnAwmy6Hc/oqhfJsRKSSZGH1JIIX3MNCsqLTD9o1Oj6ebnnDfvvefezrnbdCHhCw/n433P8z7nPe/hBEEAtX0U7hc164uwuvVSXKwZLoOmaRDim+7m9vZa0WiEKSUFFpNpCWlmMyypqTDRuYn6t3k8vmQ2gRDCxs0t9fW45F52aBTROJLtZl7nEZad2m+KtoQCQ0FBARyOCGRZ/q92I1WgqqXlfdd95VsrK8/pChIEqqpCkiQsiCII0aBQZZoWl8lzFDwsFjMl0DBLY8Lj41hBwK4jSQrWOIphL6xYyhwJDWGo6wFSaH1Y3PTCAsITE1oyAa8flhWkbSiCLX8vun11eiGIpiJ/z2nYdx5HqLdVV7elrOzsuqysL3rmBIGiKPizKCHHWY4PLVeQbnXAdegqdhy+hu8dDTBnbqQJZJ1A7u+vz7RaiymWCZgCRSF6Edk8b9cx+B/W6WuVxPaZnyiqXoPpyUmVYvkKTIFClHigEieKjYuSvETUllaF4GAUM1NT6ooaJDKx+aDfC9fByxj90REb+9ppmIoAscH/6leg8MS9DJXPAM9xHCM443K57C6biMjcHDaVVCHw9RmCA2/RGC5C00AqXk/m4p20HZK4CM/J3Zk9n0ecMBhDQnJHcrTisyMfdQXOilrdMfxcwoHq/fg5R59TiQV3hYGKo6X2J/c7LyQIjOx9GXhOw/zoJ8wEevRGyp53o/lGMNYsBgPtEwLecwov7/jGDKa1twT6o3KpL4MdZgGsWZLtfPr7f1q58k1JNHy7YYaM+J+K3Y2PmAIbRavX66229hrGVvvL5uzsHDEUvUu+NT1my78CDAAMK1a8/QaZCgAAAABJRU5ErkJggg==");
-		}
-	</style>
-
+	<link rel="stylesheet" type="text/css" href="./style.css" />
 	<script type="text/javascript" src="../lib/jquery.js"></script>
 	<script type="text/javascript" src="../dom-pdf.js"></script>
 </head>
@@ -67,8 +44,9 @@
 
 		<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHjSURBVDjLdZO/alVBEMZ/5+TemxAbFUUskqAoSOJNp4KC4AsoPoGFIHY+gA+jiJXaKIiChbETtBYLUbSMRf6Aydndmfks9kRjvHdhGVh2fvN9uzONJK7fe7Ai6algA3FZCAmQqEF/dnihpK1v7x7dPw0woF64Izg3Xl5s1n9uIe0lQYUFCtjc+sVuEqHBKfpVAXB1vLzQXFtdYPHkGFUCoahVo1Y/fnie+bkBV27c5R8A0pHxyhKvPn5hY2MHRQAQeyokFGJze4cuZfav3gLNYDTg7Pklzpw4ijtIQYRwFx6BhdjtCk+erU0CCPfg+/o2o3ZI13WUlLGo58YMg+GIY4dmCWkCAAgPzAspJW5ePFPlV3VI4uHbz5S5IQfy/yooHngxzFser30iFcNcuAVGw3A0Ilt91IkAsyCXQg5QO0szHEIrogkiguwN2acCoJhjnZGKYx4Ujz5WOA2YD1BMU+BBSYVUvNpxkXuIuWgbsOxTHrG3UHIFWIhsgXtQQpTizNBS5jXZQkhkcywZqQQlAjdRwiml7wU5xWLaL1AvZa8WIjALzIRZ7YVWDW5CiIj48Z8F2pYLl1ZR0+AuzEX0UX035mxIkLq0dhDw5vXL97fr5O3rfwQHJhPx4uuH57f2AL8BfPrVlrs6xwsAAAAASUVORK5CYII=" />
 		<br />
-		<img src="data:image/gif;base64,R0lGODlhUAAPAKIAAAsLav///88PD9WqsYmApmZmZtZfYmdakyH5BAQUAP8ALAAAAABQAA8AAAPbWLrc/jDKSVe4OOvNu/9gqARDSRBHegyGMahqO4R0bQcjIQ8E4BMCQc930JluyGRmdAAcdiigMLVrApTYWy5FKM1IQe+Mp+L4rphz+qIOBAUYeCY4p2tGrJZeH9y79mZsawFoaIRxF3JyiYxuHiMGb5KTkpFvZj4ZbYeCiXaOiKBwnxh4fnt9e3ktgZyHhrChinONs3cFAShFF2JhvCZlG5uchYNun5eedRxMAF15XEFRXgZWWdciuM8GCmdSQ84lLQfY5R14wDB5Lyon4ubwS7jx9NcV9/j5+g4JADs=" />
 
+		<!--<img src="../img/star.svg" />
+		<img src="../img/rect_rounded.svg" />-->
 		<svg>
 			<ellipse cx="200" cy="80" rx="100" ry="50" style="fill:yellow;stroke:purple;stroke-width:2" />
 		</svg>
@@ -79,77 +57,79 @@
 			<thead>
 				<tr><th>col1</th><th>col2</th><th>col3</th></tr>
 			</thead>
-			<tr><td>cell0.1</td><td>cell0.2</td><td>cell0.3</td></tr>
-			<tr style="background-color:gray;"><td>cell1.2</td><td>cell.2</td><td>cell2.3</td></tr>
-			<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 6</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 11</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 12</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 13</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 14</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 15</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 16</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 17</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 18</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 19</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 20</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell pre</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell break</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
-			<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
-			<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
-			<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
-			<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
-			<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
-			<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
-			<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
-			<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
+			<tbody>
+				<tr><td>cell0.1</td><td>cell0.2</td><td>cell0.3</td></tr>
+				<tr><td>cell1.2</td><td>cell.2</td><td>cell2.3</td></tr>
+				<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 6</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 11</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 12</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 13</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 14</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 15</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 16</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 17</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 18</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 19</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 20</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell pre</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell break</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
+				<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
+				<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
+				<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
+				<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
+				<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
+				<tr><td>cell 0</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 1</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 2</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 3</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 4</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 5</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 6</td><td>cell fin 2</td><td>cell3</td></tr>
+				<tr><td>cell 7</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 8</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 9</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 10</td><td>cell2</td><td>cell3</td></tr>
+				<tr><td>cell 11</td><td>cell dd2</td><td>cell3</td></tr>
+			</tbody>
 		</table>
 		<p>observaciones post table</p>
 		<p class="page_number">:number; / :total;</p>

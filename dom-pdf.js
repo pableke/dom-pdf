@@ -85,7 +85,6 @@ function dompdf(root, opts) {
 	var ctx = canvas.getContext("2d"); //always 2d
 
 	//array prototype functions extensions
-	Array.prototype.add = function(value) { value && this.push(value); return this; };
 	Array.prototype.put = function() { this.push.apply(this, arguments); return this; };
 	Array.prototype.merge = function(arr) { arr && this.push.apply(this, arr); return this; };
 	Array.prototype.combine = function(arr) { return this.reduce(function(r, e, i) { r[e] = arr[i]; return r; }, {}); };
@@ -228,11 +227,15 @@ function dompdf(root, opts) {
 		return stream;
 	};
 
+	function _dest(href) {
+		var target = $("a[name='" + href.substr(1) + "']", root); //destination element
+		return $(target).closest($(root).children())[0]; //find page destination
+	};
+
 	function _a(page, elem, offset) {
 		var href = elem.getAttribute("href");
-		if (!href) return false; //anchor case
-		var target = $("a[name='" + href.substr(1) + "']", root); //destination element
-		var dest = $(target).closest($(root).children())[0]; //find page destination
+		//if (!href) return false; //anchor case
+		var dest = _dest(href);
 		if (dest)
 			return _newpdf(["/Type /Annot", "/Subtype /Link",
 					"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
@@ -267,7 +270,7 @@ function dompdf(root, opts) {
 			var jpgBin = atob(canvas.toDataURL("image/jpeg").replace(/^data:image\/([\w]+);base64,/, ""));
 			ctx.clearRect(0, 0, canvas.width, canvas.height);
 		} catch(e) {
-			return _text(page, elem, e.toString());
+			return !$(elem).replaceWith("<p>" + e.toString() + "</p>");
 		}
 
 		i = sources.length;
@@ -290,27 +293,20 @@ function dompdf(root, opts) {
 		return _img(page, img, offset);
 	};
 
-	function _each(node, fn) {
-		var i = 0;
-		function _it(node) {
-			var child = node.firstChild;
-			while (child) {
-				var aux = child.nextSibling;
-				if (fn(child, i++) && _it(child))
-					child = child.nextSibling || aux;
-				else
-					return false;
-			}
-			return node;
-		}
-		return _it(node) || node;
-	};
+function recursive(elem) {
+	var result = [];
+	$("li > a", elem).each(function() {
+		this.children = recursive($("> ul", elem));
+		result.push(this);
+	});
+	return result;
+};
 
 	return {
 		parse: function() {
 			root.childNodes.forEach(function(elem) { (elem.nodeType != 1) && $(elem).remove(); });
-			_each(root, e => (((e.nodeType == 1) && (e.style.display != "none") && (e.style.visibility != "hidden"))
-								|| (e.nodeType == 3) || $(e).remove())); //filter visible elements and texts objects
+			$("*", root).filter((i, e) => ((e.style.display == "none") || (e.style.visibility == "hidden"))).remove();
+			$("*", root).contents().filter(function() { return this.nodeType == 8; }).remove();
 			root.childNodes.forEach(function(page) {
 				pages.push(page); //page to write in output
 				//calc de format page and recalcule lengths
@@ -332,17 +328,16 @@ function dompdf(root, opts) {
 				page.bottom = offset.top + page.height; //offset bottom page
 				//page.right = offset.left + page.width; //offset right page
 
-				var elements = [];
 				w = _fStyle(page, "paddingBottom");
 				page.childNodes.forEach(e => ((e.nodeType == 3) && $(e).replaceWith("<span>" + e.data + "</span>")));
-				_each(page, function(e, i) {
-					offset = (e.nodeType == 3) ? null : _offset(page, e);
-					if (!offset || (offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
-						return e;
+				$("*", page).each(function(i, e) {
+					offset = _offset(page, e);
+					if ((offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
+						return true;
 					var newPage = root.insertBefore(page.cloneNode(true), page.nextSibling);
-					_each(newPage, (e, j) => ((j < i) && ((e.nodeType == 3) || (e.clientHeight > h) || elements.push(e))));
-					elements.forEach(e => (($(e).css("position") == "absolute") || $(e).closest("thead").length || $(e).remove()));
-					_each(page, (e, j) => ((j < i) || (e.nodeType == 3) || ($(e).css("position") == "absolute") || $(e).remove()));
+					$("*", newPage).filter((j, e) => ((j < i) && (e.clientHeight <= h) && ($(e).css("position") != "absolute")
+														&& ($(e).closest("thead").length == 0))).remove();
+					$("*", page).filter((j, e) => ((j >= i) && ($(e).css("position") != "absolute"))).remove();
 					return false; //force go to next page
 				});
 			});
@@ -377,13 +372,10 @@ function dompdf(root, opts) {
 				"/Count " + pages.length
 			]);
 
-			$("#outlines", root).find("a[href]").each(e => (e.reference = ++objects));
-			$("#outlines", root).find("li").each(function() {
-
-			});
+			var outlines = recursive($("#outlines", root));
 			_pdf(idOutlines, [
-				"/Type /Outlines", 
-				"/Count 0"
+				"/Type /Outlines",
+				"/Count " + outlines.length
 			]);
 
 			pages.forEach(function(page, i) {
@@ -391,16 +383,12 @@ function dompdf(root, opts) {
 				var stream = []; //page contents
 				page.number = i + 1; //page number
 				page.total = pages.length;
-				_each(page, function(e) {
-					if (e.nodeType == 3) //text object doesn't have offset
-						return stream.merge(_text(page, e));
-					var offset = _offset(page, e); //recalcule final offset
-					stream.merge(_style(page, e, offset)); //push DOM element style
-					if (e.nodeName == "IMG") return stream.merge(_img(page, e, offset));
-					if (e.nodeName == "svg") return stream.merge(_svg(page, e, offset));
-					if (e.nodeName == "A") return links.add(_a(page, e, offset));
-					return true;
-				});
+				$("img", page).each((i, e) => stream.merge(_img(page, e, _offset(page, e))));
+				$("svg", page).each((i, e) => stream.merge(_svg(page, e, _offset(page, e))));
+				$("a[href]", page).each((i, e) => links.push(_a(page, e, _offset(page, e))));
+				$("*", page).each((i, e) => stream.merge(_style(page, e, _offset(page, e))))
+							.contents().filter(function() { return this.nodeType === 3; })
+							.each((i, e) => stream.merge(_text(page, e)));
 
 				var aux = _size(stream) + stream.length - 1; //stream length
 				aux = _streaming(["/Length " + aux], stream); //put stream
