@@ -319,8 +319,7 @@ function dompdf(root, opts) {
 	return {
 		parse: function() {
 			root.childNodes.forEach(function(elem) { (elem.nodeType != 1) && $(elem).remove(); });
-			//$("*", root).filter((i, e) => ((e.style.display == "none") || (e.style.visibility == "hidden"))).remove();
-			$("*", root).contents().filter(function() { return this.nodeType == 8; }).remove();
+			$("*", root).contents().filter((i, e) => ((e.nodeType != 3) && (e.nodeType != 1))).remove();
 			root.childNodes.forEach(function(page) {
 				//calc de format page and recalcule lengths
 				var classes = page.className.split(/\s+/);
