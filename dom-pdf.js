@@ -69,12 +69,16 @@ function dompdf(root, opts) {
 	];
 
 	opts = opts || {}; //user config
+	opts.lang = opts.lang || "es-ES";
 	opts.pageFormat = opts.pageFormat || "a4";
 	opts.fontSize = opts.fontSize || 12;
+	opts.outlines = opts.outlines || "#outlines";
+	opts.title = opts.title || "DOM-PDF";
+	opts.producer = opts.producer || "";
 
-	var contents = []; //data
+	var contents = []; //data contents
 	var offsets = []; //objects offsets
-	var pages = []; //page container
+	var pages; //page container
 	var images = []; //images id
 	var sources = []; //images src
 	var length = 0; //contents size
@@ -88,7 +92,6 @@ function dompdf(root, opts) {
 	Array.prototype.put = function() { this.push.apply(this, arguments); return this; };
 	Array.prototype.merge = function(arr) { arr && this.push.apply(this, arr); return this; };
 	Array.prototype.combine = function(arr) { return this.reduce(function(r, e, i) { r[e] = arr[i]; return r; }, {}); };
-	Array.prototype.toObject = function() { return this.reduce(function(r, e, i) { r[i] = e; return r; }, {}); };
 	Array.prototype.unique = function() { return this.filter((e, i, a) => (a.indexOf(e) == i)); };
 	Array.prototype.intersect = function(arr) { return this.filter(e => (arr.indexOf(e) > -1)); };
 	Array.prototype.indexes = function(arr) { return arr.map(e => this.indexOf(e)).filter(i => (i > -1)); };
@@ -145,9 +148,10 @@ function dompdf(root, opts) {
 	function _f2Size(o) { return _f2Coords(o.width, o.height); };
 	function _f2Rect(a, b, x, y) { return _f2Coords(a, b) + " " + _f2Coords(x, y); };
 	function _line(a, b, x, y) { return _f2Coords(a, b) + " m " + _f2Coords(x, y) + " l"; };
-	function _lineTop(e) { return _line(e.left, e.top - 2, e.right, e.top - 2); };
+	function _lineh(x1, x2, y) { return _line(x1, y, x2, y); };
+	function _lineTop(e) { return _lineh(e.left, e.right, e.top); };
 	function _lineLeft(e) { return _line(e.left, e.top, e.left, e.bottom); };
-	function _lineBottom(e) { return _line(e.left, e.bottom, e.right, e.bottom); };
+	function _lineBottom(e) { return _lineh(e.left, e.right, e.bottom); };
 	function _lineRight(e) { return _line(e.right, e.top, e.right, e.bottom); };
 	function _boxElem(e) { return _f2Rect(e.left, e.bottom, e.width, e.height); };
 	function _xyElem(e) { return _f2Rect(e.left, e.bottom, e.right, e.top); };
@@ -187,12 +191,16 @@ function dompdf(root, opts) {
 		return stream;
 	};
 
+	function _escape(text) { return text.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)"); };
+	function _repeatable(e) { return ($(e).css("position") == "absolute") || $(e).closest("thead").length; };
+	function _dest(href) { return pages.find(p => ($("a[name='" + href.substr(1) + "']", p).length)); };
+
 	function _text(page, elem, text) {
 		text = text || elem.data;
 		if (!text || !text.trim())
 			return null; //empty text
 
-		var stream = []; //page contents
+		var stream = []; //text contents
 		var owner = (elem.nodeType == 3) ? elem.parentNode : elem;
 		var size = _fStyle(owner, "font-size") || opts.fontSize;
 		var fonts = $(owner).css("font-family").split().map(function(font) {
@@ -201,11 +209,11 @@ function dompdf(root, opts) {
 			return font.replace(/\W+/g, "") + css;
 		});
 		var fRef = FONTS.indexes(fonts)[0] || 0;
-		var pdfColor = _cssColor(owner, "color") || _gray(0);
 		var decoration = $(owner).css("text-decoration") + " ";
 		decoration += $(owner.parentNode).css("text-decoration");
+		var color = (_cssColor(owner, "color") || _gray(0)).toUpperCase();
 
-		text = text.replace(/:([\w\.]+);/g, (txt, key) => (page[key] || txt));
+		text = _escape(text.replace(/:([\w\.]+);/g, (txt, key) => (page[key] || txt)));
 		var child1 = $("<span><span>" + text.replace(/\s+/g, "</span> <span>") + "</span></span>");
 		owner.replaceChild(child1[0], elem);
 		var lines = {}; //rows container by top position
@@ -214,22 +222,19 @@ function dompdf(root, opts) {
 			lines[top] = (lines[top] ? lines[top] + " " : "") + this.innerText;
 		});
 		var rows = Object.keys(lines).map(k => lines[k].trim()).filter(r => r);
-		var child2 = $("<span>" + rows.map(row => "<span>" + row + "</span>").join(" ") + "</span>");
+		var child2 = $("<span>" + rows.map(row => "<span>" + row + "</span>").join("<br>") + "</span>");
 		owner.replaceChild(child2[0], child1[0]);
-		$("span", child2).each(function(i, e) {
-			var offset = _offset(page, e, size);
-			stream.push("BT", "/f" + fRef, size + " Tf", pdfColor, _f2Elem(offset) + " Td", "(" + rows[i] + ") Tj", "ET");
-			(decoration.indexOf("overline") > -1) && stream.push("1 w", _lineTop(offset), "S");
-			(decoration.indexOf("underline") > -1) && (offset.bottom--) && stream.push("1 w", _lineBottom(offset), "S");
-			(decoration.indexOf("line-through") > -1) && (offset.bottom += 5) && stream.push("1 w", _lineBottom(offset), "S");
-		});
-		$(child2).replaceWith(text);
-		return stream;
-	};
-
-	function _dest(href) {
-		var target = $("a[name='" + href.substr(1) + "']", root); //destination element
-		return $(target).closest($(root).children())[0]; //find page destination
+		var offsets = $("span", child2).toArray().map(e => _offset(page, e, size));
+		(decoration.indexOf("overline") > -1) && offsets.forEach(o => stream.push("1 w", color, _lineh(o.left, o.right, o.top - 2), "S"));
+		(decoration.indexOf("underline") > -1) && offsets.forEach(o => stream.push("1 w", color, _lineh(o.left, o.right, o.bottom), "S"));
+		(decoration.indexOf("line-through") > -1) && offsets.forEach(o => stream.push("1 w", color, _lineh(o.left, o.right, o.bottom + 4), "S"));
+		stream.push("BT", "/f" + fRef, size + " Tf", color.toLowerCase(), _f2Elem(offsets[0]) + " Td", "(" + rows.shift() + ") Tj");
+		offsets.reduce(function(o, c, i) {
+			stream.push((c.left - o.left) + " -" + size + " Td", "(" + rows[i] + ") Tj");
+			return c;
+		}, offsets.shift());
+		//$(child2).replaceWith(text);
+		return stream.put("ET");
 	};
 
 	function _a(page, elem, offset) {
@@ -239,7 +244,7 @@ function dompdf(root, opts) {
 		if (dest)
 			return _newpdf(["/Type /Annot", "/Subtype /Link",
 					"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
-					"/Dest [" + _ref(dest.reference) + " /XYZ 0 0 null]"]);
+					"/Dest [" + _ref(dest.pdf) + " /XYZ 0 0 null]"]);
 		return _newpdf(["/Type /Annot", "/Subtype /Link",
 			"/Rect [" + _xyElem(offset) + "]", "/Border [0 0 0]",
 			"/A", OPEN, "/Type /Action", "/S /URI /URI(" + href + ")", CLOSE]);
@@ -293,28 +298,37 @@ function dompdf(root, opts) {
 		return _img(page, img, offset);
 	};
 
-function recursive(elem) {
-	var result = [];
-	$("li > a", elem).each(function() {
-		this.children = recursive($("> ul", elem));
-		result.push(this);
-	});
-	return result;
-};
+	var outlines = []; //bookmarks
+	function _outlines(node, elem) {
+		var li = $(elem).children("li");
+		if (li.length) {
+			var nodes = li.toArray().map(e => ({ id: ++objects, data: ["/Parent " + _ref(node.id)] }));
+			node.data.push("/First " + _ref(nodes[0].id), "/Last " + _ref(nodes[nodes.length - 1].id));
+			nodes.forEach(function(o, i, a) {
+				var link = $(li[i]).children("a[href]");
+				var dest = _dest(link.attr("href"));
+				a[i + 1] && o.data.push("/Next " + _ref(a[i + 1].id));
+				o.data.push("/Title (" + link.text() + ")", "/Dest [" + _ref(dest.pdf) + " /XYZ 0 0 null]");
+				_outlines(o, $(li[i]).children("ul"));
+			});
+		}
+		node.data.push("/Count " + li.length)
+		return outlines.put(node);
+	};
 
 	return {
 		parse: function() {
 			root.childNodes.forEach(function(elem) { (elem.nodeType != 1) && $(elem).remove(); });
-			$("*", root).filter((i, e) => ((e.style.display == "none") || (e.style.visibility == "hidden"))).remove();
+			//$("*", root).filter((i, e) => ((e.style.display == "none") || (e.style.visibility == "hidden"))).remove();
 			$("*", root).contents().filter(function() { return this.nodeType == 8; }).remove();
 			root.childNodes.forEach(function(page) {
-				pages.push(page); //page to write in output
 				//calc de format page and recalcule lengths
 				var classes = page.className.split(/\s+/);
 				var i = $(page).hasClass("landscape") ? 1 : 0;
 				var dim = Object.keys(FORMATS).find(n => (classes.indexOf(n) > -1));
 				dim = FORMATS[dim] || FORMATS[opts.pageFormat]; //default = a4
 				//set page dimensions
+				page.pdf = ++objects;
 				page.width = dim[i++];
 				page.height = dim[i % 2];
 				//update html and css page view
@@ -335,8 +349,7 @@ function recursive(elem) {
 					if ((offset.bottom >= w) || (offset.height > h) || ($(e).css("position") == "absolute"))
 						return true;
 					var newPage = root.insertBefore(page.cloneNode(true), page.nextSibling);
-					$("*", newPage).filter((j, e) => ((j < i) && (e.clientHeight <= h) && ($(e).css("position") != "absolute")
-														&& ($(e).closest("thead").length == 0))).remove();
+					$("*", newPage).filter((j, e) => ((j < i) && (e.clientHeight <= h) && !_repeatable(e))).remove();
 					$("*", page).filter((j, e) => ((j >= i) && ($(e).css("position") != "absolute"))).remove();
 					return false; //force go to next page
 				});
@@ -352,48 +365,45 @@ function recursive(elem) {
 
 			//put PDF header, body and footer contents
 			_out("%PDF-" + (root.getAttribute("pdf") || "1.5"));
+			_out("%ÐÔÅØ"); //header convention
 			var idRoot = _newpdf([
 				"/Type /Catalog",
+				"/Lang (" + ($(root).attr("lang") || opts.lang) + ")",
 				"/Pages " + _ref(idParent),
 				"/Outlines " + _ref(idOutlines)
 			]);
 			var idInfo = _newpdf([
-				"/Title (" + ($(root).attr("title") || "DOM-PDF") + ")",
-				"/Producer (" + ($(root).attr("producer") || "") + ")",
+				"/Title (" + ($(root).attr("title") || opts.title) + ")",
+				"/Producer (" + ($(root).attr("producer") || opts.producer) + ")",
 				"/CreationDate (D:" + date.getFullYear() + date.getMonth() + date.getDate()
 									+ date.getHours() + date.getMinutes() + date.getSeconds() + ")"
 			]);
 
-			var idPages = pages.map(p => (p.reference = ++objects));
+			pages = $(root).children(":visible").toArray();
+			_outlines({id: idOutlines, data: ["/Type /Outlines"]}, $(opts.outlines, root)).forEach(o => _pdf(o.id, o.data));
 			_pdf(idParent, [
 				"/Type /Pages",
 				"/MediaBox [0 0 " + FORMATS[opts.pageFormat].join(" ") + "]",
-				"/Kids [" + idPages.map(_ref).join(" ")  + "]",
+				"/Kids [" + pages.map(p => _ref(p.pdf)).join(" ")  + "]",
 				"/Count " + pages.length
-			]);
-
-			var outlines = recursive($("#outlines", root));
-			_pdf(idOutlines, [
-				"/Type /Outlines",
-				"/Count " + outlines.length
 			]);
 
 			pages.forEach(function(page, i) {
 				var links = []; //links container
 				var stream = []; //page contents
 				page.number = i + 1; //page number
-				page.total = pages.length;
-				$("img", page).each((i, e) => stream.merge(_img(page, e, _offset(page, e))));
-				$("svg", page).each((i, e) => stream.merge(_svg(page, e, _offset(page, e))));
-				$("a[href]", page).each((i, e) => links.push(_a(page, e, _offset(page, e))));
-				$("*", page).each((i, e) => stream.merge(_style(page, e, _offset(page, e))))
-							.contents().filter(function() { return this.nodeType === 3; })
-							.each((i, e) => stream.merge(_text(page, e)));
+				page.total = pages.length; //total pages
+				$("img:visible", page).each((i, e) => stream.merge(_img(page, e, _offset(page, e))));
+				$("svg:visible", page).each((i, e) => stream.merge(_svg(page, e, _offset(page, e))));
+				$("a[href]:visible", page).each((i, e) => links.push(_a(page, e, _offset(page, e))));
+				$("*:visible", page).each((i, e) => stream.merge(_style(page, e, _offset(page, e))))
+								.contents().filter(function() { return this.nodeType === 3; })
+								.each((i, e) => stream.merge(_text(page, e)));
 
 				var aux = _size(stream) + stream.length - 1; //stream length
 				aux = _streaming(["/Length " + aux], stream); //put stream
 
-				_pdf(page.reference, [
+				_pdf(page.pdf, [
 					"/Type /Page",
 					"/Parent " + _ref(idParent),
 					"/Resources " + _ref(idResource),
